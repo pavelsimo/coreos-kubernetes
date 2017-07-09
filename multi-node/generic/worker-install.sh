@@ -27,6 +27,9 @@ export DNS_SERVICE_IP=10.3.0.10
 # Whether to use Calico for Kubernetes network policy.
 export USE_CALICO=false
 
+# Whether to use Kubernetes pause.
+export USE_K8S_PAUSE=true
+
 # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
 export CONTAINER_RUNTIME=docker
 
@@ -324,7 +327,13 @@ if [ $CONTAINER_RUNTIME = "rkt" ]; then
         systemctl enable rkt-api
 fi
 
+if [ $USE_K8S_PAUSE = "true" ]; then
+    docker pull docker.io/kubernetes/pause
+    docker tag docker.io/kubernetes/pause gcr.io/google_containers/pause-amd64:3.0    
+fi
+
 systemctl enable flanneld; systemctl start flanneld
 
 
 systemctl enable kubelet; systemctl start kubelet
+

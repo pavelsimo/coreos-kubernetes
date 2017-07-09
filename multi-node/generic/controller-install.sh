@@ -10,6 +10,10 @@ export K8S_VER=v1.5.4_coreos.0
 # Hyperkube image repository to use.
 export HYPERKUBE_IMAGE_REPO=quay.io/coreos/hyperkube
 
+# Google image repository to use.
+# export GOOGLE_IMAGE_REPO=gcr.io/google_containers
+export GOOGLE_IMAGE_REPO=googlecontainer
+
 # The CIDR network to use for pod IPs.
 # Each pod launched in the cluster will be assigned an IP out of this range.
 # Each node will be configured such that these IPs will be routable using the flannel overlay network.
@@ -32,6 +36,9 @@ export DNS_SERVICE_IP=10.3.0.10
 
 # Whether to use Calico for Kubernetes network policy.
 export USE_CALICO=false
+
+# Whether to use Kubernetes pause.
+export USE_K8S_PAUSE=true
 
 # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
 export CONTAINER_RUNTIME=docker
@@ -414,7 +421,7 @@ spec:
     spec:
       containers:
       - name: kubedns
-        image: gcr.io/google_containers/kubedns-amd64:1.9
+        image: ${GOOGLE_IMAGE_REPO}/kubedns-amd64:1.9
         resources:
           limits:
             memory: 170Mi
@@ -458,7 +465,7 @@ spec:
           name: metrics
           protocol: TCP
       - name: dnsmasq
-        image: gcr.io/google_containers/kube-dnsmasq-amd64:1.4
+        image: ${GOOGLE_IMAGE_REPO}/kube-dnsmasq-amd64:1.4
         livenessProbe:
           httpGet:
             path: /healthz-dnsmasq
@@ -486,7 +493,7 @@ spec:
             cpu: 150m
             memory: 10Mi
       - name: dnsmasq-metrics
-        image: gcr.io/google_containers/dnsmasq-metrics-amd64:1.0
+        image: ${GOOGLE_IMAGE_REPO}/dnsmasq-metrics-amd64:1.0
         livenessProbe:
           httpGet:
             path: /metrics
@@ -507,7 +514,7 @@ spec:
           requests:
             memory: 10Mi
       - name: healthz
-        image: gcr.io/google_containers/exechealthz-amd64:1.2
+        image: ${GOOGLE_IMAGE_REPO}/exechealthz-amd64:1.2
         resources:
           limits:
             memory: 50Mi
@@ -553,7 +560,7 @@ spec:
     spec:
       containers:
       - name: autoscaler
-        image: gcr.io/google_containers/cluster-proportional-autoscaler-amd64:1.0.0
+        image: ${GOOGLE_IMAGE_REPO}/cluster-proportional-autoscaler-amd64:1.0.0
         resources:
             requests:
                 cpu: "20m"
@@ -628,7 +635,7 @@ spec:
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
     spec:
       containers:
-        - image: gcr.io/google_containers/heapster:v1.2.0
+        - image: ${GOOGLE_IMAGE_REPO}/heapster:v1.2.0
           name: heapster
           livenessProbe:
             httpGet:
@@ -640,7 +647,7 @@ spec:
           command:
             - /heapster
             - --source=kubernetes.summary_api:''
-        - image: gcr.io/google_containers/addon-resizer:1.6
+        - image: ${GOOGLE_IMAGE_REPO}/addon-resizer:1.6
           name: heapster-nanny
           resources:
             limits:
@@ -721,7 +728,7 @@ spec:
     spec:
       containers:
       - name: kubernetes-dashboard
-        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.5.0
+        image: ${GOOGLE_IMAGE_REPO}/kubernetes-dashboard-amd64:v1.5.0
         resources:
           # keep request = limit to keep this container in guaranteed class
           limits:
@@ -1062,6 +1069,11 @@ systemctl daemon-reload
 if [ $CONTAINER_RUNTIME = "rkt" ]; then
         systemctl enable load-rkt-stage1
         systemctl enable rkt-api
+fi
+
+if [ $USE_K8S_PAUSE = "true" ]; then
+    docker pull docker.io/kubernetes/pause
+    docker tag docker.io/kubernetes/pause gcr.io/google_containers/pause-amd64:3.0    
 fi
 
 systemctl enable flanneld; systemctl start flanneld
